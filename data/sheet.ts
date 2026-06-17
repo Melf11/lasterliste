@@ -8,4 +8,5 @@
 //   3. Die erzeugte URL (endet auf "output=csv") hier eintragen.
 //
 // Solange das Feld leer ist, zeigt die Seite einen Hinweis statt der Liste.
-export const SHEET_CSV_URL = ''
+export const SHEET_CSV_URL =
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRulkC2rwMKQPbGT8S5M_mwscun_r3TBtzIcBYNUx00i0qvwooRKOeKr30IUYotaiyiND-ntwp0SIAQ/pub?gid=0&single=true&output=csv'
