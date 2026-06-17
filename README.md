@@ -14,7 +14,7 @@ Oben kannst du suchen, nach Marke filtern, nach Gewicht eingrenzen und sortieren
 Die Daten liegen in einem **Google Sheet** – dafür brauchst du nur einen
 Google-Account, kein GitHub.
 
-👉 **Google Sheet:** _<hier den Bearbeitungs-Link des Sheets eintragen>_
+👉 **Google Sheet:** _https://docs.google.com/spreadsheets/d/17KJyeW6GAxpIM9eat4wMFit__qa1a4hZt0B-kbpstRw/edit?usp=sharing_
 
 So geht's:
 

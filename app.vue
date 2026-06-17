@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { SHEET_CSV_URL } from './data/sheet'
+import { SHEET_CSV_URL, SHEET_EDIT_URL } from './data/sheet'
+
+// Link zum Sheet: bevorzugt der Bearbeitungs-Link, sonst die öffentliche Leseansicht
+// des veröffentlichten Sheets (aus der CSV-URL abgeleitet).
+const sheetUrl = SHEET_EDIT_URL || SHEET_CSV_URL.replace(/\/pub\?.*$/, '/pubhtml')
+const repoUrl = 'https://github.com/Melf11/lasterliste'
 
 interface Truck {
   id: number
@@ -154,6 +159,9 @@ const hasActiveFilters = computed(
           aus der Forumsliste, filter- und durchsuchbar.
         </p>
       </div>
+      <a class="sheet-btn" :href="sheetUrl" target="_blank" rel="noopener">
+        ✏️ Liste im Google&nbsp;Sheet bearbeiten
+      </a>
     </header>
 
     <p v-if="status === 'loading'" class="notice">Lade Liste …</p>
@@ -254,9 +262,15 @@ const hasActiveFilters = computed(
     </template>
 
     <footer class="foot">
-      Angaben ohne Gewähr – Mischung aus gewogenen Werten, Papieren und Schätzungen.
-      Details siehe jeweilige Beschreibung. Die Liste wird gemeinschaftlich über ein
-      Google Sheet gepflegt.
+      <p class="foot-note">
+        Angaben ohne Gewähr – Mischung aus gewogenen Werten, Papieren und Schätzungen.
+        Details siehe jeweilige Beschreibung.
+      </p>
+      <p class="foot-links">
+        Liste gemeinschaftlich gepflegt über ein
+        <a :href="sheetUrl" target="_blank" rel="noopener">Google Sheet</a>
+        · <a :href="repoUrl" target="_blank" rel="noopener">Quellcode auf GitHub</a>
+      </p>
     </footer>
   </div>
 </template>
@@ -298,6 +312,32 @@ body {
 
 .hero {
   padding: 2.5rem 0 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sheet-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--accent);
+  color: #1a1205;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-decoration: none;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--accent);
+  transition: filter 0.12s ease, transform 0.12s ease;
+}
+
+.sheet-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .hero h1 {
@@ -525,6 +565,19 @@ select:focus {
   text-align: center;
   font-size: 0.82rem;
   color: var(--muted);
+}
+
+.foot p {
+  margin: 0.4rem 0;
+}
+
+.foot-links a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.foot-links a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 560px) {
