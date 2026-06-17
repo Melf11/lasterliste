@@ -1,43 +1,43 @@
 # Lasterliste
 
-Filterbare Liste von LKW-Leergewichten (Allrad-LKW, Expeditions-, Feuerwehr- und
-Militärfahrzeuge). Statische Seite mit Nuxt 3, gehostet auf GitHub Pages. Die Daten
-kommen live aus einem **Google Sheet** – so kann jede/r mit Google-Account mitpflegen,
-ganz ohne GitHub.
+Filter- und durchsuchbare Liste von LKW-Leergewichten (Allrad-LKW, Expeditions-,
+Feuerwehr- und Militärfahrzeuge).
 
-## Liste pflegen (für alle, ohne GitHub)
+## Liste ansehen
 
-Die Liste liegt in einem Google Sheet mit den Spalten **Marke · Modell · Beschreibung · Gewicht**.
-Einfach eine Zeile ergänzen/ändern/löschen – die Seite zeigt die Änderung beim nächsten
-Neuladen (Google cached die veröffentlichte Datei ein paar Minuten).
+👉 **https://melf11.github.io/lasterliste/**
 
-## Google Sheet einrichten (einmalig, durch den Repo-Owner)
+Oben kannst du suchen, nach Marke filtern, nach Gewicht eingrenzen und sortieren.
 
-1. Neues Google Sheet anlegen. Erste Zeile als Kopf: `Marke | Modell | Beschreibung | Gewicht`.
-2. Bestand übernehmen: **Datei → Importieren → Hochladen** und die mitgelieferte
-   [`data/trucks.csv`](data/trucks.csv) (201 Einträge) auswählen → „Daten an aktueller
-   Stelle einfügen".
-3. **Datei → Freigeben → Im Web veröffentlichen** → „Gesamtes Dokument",
-   Format **Kommagetrennte Werte (.csv)** → *Veröffentlichen*.
-4. Die erzeugte URL (endet auf `output=csv`) in **[`data/sheet.ts`](data/sheet.ts)**
-   bei `SHEET_CSV_URL` eintragen und committen.
+## Liste bearbeiten
 
-Zum *Bearbeiten* des Sheets gibst du den Mitpflegern Schreibzugriff (Teilen-Button,
-Google-Konten oder Link). Zum *Anzeigen* auf der Seite genügt das „Im Web veröffentlichen"
-aus Schritt 3 – dafür braucht niemand Zugriff.
+Die Daten liegen in einem **Google Sheet** – dafür brauchst du nur einen
+Google-Account, kein GitHub.
 
-## Lokale Entwicklung
+👉 **Google Sheet:** _<hier den Bearbeitungs-Link des Sheets eintragen>_
 
-```bash
-npm install
-npm run dev        # http://localhost:3000
-```
+So geht's:
 
-## Deploy
+- **Eintrag hinzufügen:** unten eine neue Zeile ausfüllen.
+- **Eintrag ändern:** die betreffende Zelle anpassen.
+- **Eintrag löschen:** die ganze Zeile löschen (Rechtsklick auf die Zeilennummer → „Zeile löschen").
 
-GitHub Actions (`.github/workflows/pages.yml`) baut bei jedem Push auf `main`
-(`npm run generate`) und veröffentlicht nach GitHub Pages. Einmalig im Repo:
-**Settings → Pages → Source: „GitHub Actions"**.
+Die Spalten:
 
-> Hinweis: Die eigentlichen Listendaten ändern sich über das Google Sheet **ohne**
-> erneuten Deploy – ein Rebuild ist nur nötig, wenn sich Code oder die Sheet-URL ändern.
+| Spalte | Bedeutung |
+|---|---|
+| **Marke** | Hersteller, z. B. `Mercedes` (gruppiert die Filter-Knöpfe) |
+| **Modell** | Modellbezeichnung, z. B. `LA 1113B` |
+| **Beschreibung** | Aufbau, Bereifung, Radstand, Quelle der Wägung … (darf leer sein) |
+| **Gewicht** | Leergewicht in kg, nur die Zahl, z. B. `4500` |
+
+Wichtig:
+- Die **erste Zeile** (Überschriften `Marke / Modell / Beschreibung / Gewicht`)
+  bitte nicht umbenennen oder löschen.
+- Änderungen erscheinen auf der Webseite nach kurzer Zeit – einfach die Seite neu laden
+  (Google aktualisiert die Daten ein paar Minuten verzögert).
+
+---
+
+ℹ️ Technische Doku (Aufbau, lokale Entwicklung, Deployment, Sheet einrichten):
+siehe **[DEVELOPMENT.md](DEVELOPMENT.md)**.
