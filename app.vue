@@ -1,6 +1,83 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { trucks, type Truck } from './data/trucks'
+import { computed, onMounted, ref } from 'vue'
+import { SHEET_CSV_URL } from './data/sheet'
+
+interface Truck {
+  id: number
+  brand: string
+  model: string
+  desc: string
+  weight: number
+}
+
+const trucks = ref<Truck[]>([])
+const status = ref<'loading' | 'ready' | 'error' | 'unconfigured'>('loading')
+const errorMsg = ref('')
+
+/** Minimaler RFC-4180-CSV-Parser: behandelt Kommas, Zeilenumbrüche und "" in Feldern. */
+function parseCSV(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let inQuotes = false
+  text = text.replace(/\r\n?/g, '\n')
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]
+    if (inQuotes) {
+      if (c === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++ } else { inQuotes = false }
+      } else field += c
+    } else if (c === '"') inQuotes = true
+    else if (c === ',') { row.push(field); field = '' }
+    else if (c === '\n') { row.push(field); rows.push(row); row = []; field = '' }
+    else field += c
+  }
+  if (field.length || row.length) { row.push(field); rows.push(row) }
+  return rows
+}
+
+const HEADER_ALIASES: Record<keyof Omit<Truck, 'id'>, string[]> = {
+  brand: ['marke', 'brand', 'hersteller'],
+  model: ['modell', 'model', 'typ'],
+  desc: ['beschreibung', 'desc', 'description', 'aufbau'],
+  weight: ['gewicht', 'weight', 'leergewicht', 'kg', 'gewicht (kg)']
+}
+
+function rowsToTrucks(rows: string[][]): Truck[] {
+  if (!rows.length) return []
+  const header = rows[0].map((h) => h.trim().toLowerCase())
+  const col = (field: keyof typeof HEADER_ALIASES) =>
+    header.findIndex((h) => HEADER_ALIASES[field].includes(h))
+  const ci = { brand: col('brand'), model: col('model'), desc: col('desc'), weight: col('weight') }
+
+  const out: Truck[] = []
+  for (let r = 1; r < rows.length; r++) {
+    const cells = rows[r]
+    const brand = (cells[ci.brand] ?? '').trim()
+    const model = (cells[ci.model] ?? '').trim()
+    const desc = (cells[ci.desc] ?? '').trim()
+    const weight = Number(String(cells[ci.weight] ?? '').replace(/[^\d]/g, '')) || 0
+    if (!brand && !model) continue // Leerzeilen überspringen
+    out.push({ id: r, brand, model, desc, weight })
+  }
+  return out
+}
+
+onMounted(async () => {
+  if (!SHEET_CSV_URL) {
+    status.value = 'unconfigured'
+    return
+  }
+  try {
+    const res = await fetch(SHEET_CSV_URL, { cache: 'no-store' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    trucks.value = rowsToTrucks(parseCSV(await res.text()))
+    status.value = 'ready'
+  } catch (e: any) {
+    errorMsg.value = e?.message || 'Unbekannter Fehler'
+    status.value = 'error'
+  }
+})
 
 const search = ref('')
 const selectedBrands = ref<string[]>([])
@@ -9,12 +86,12 @@ const maxWeight = ref<number | null>(null)
 const sortBy = ref<'brand' | 'weight-asc' | 'weight-desc'>('brand')
 
 const brands = computed(() =>
-  [...new Set(trucks.map((t) => t.brand))].sort((a, b) => a.localeCompare(b, 'de'))
+  [...new Set(trucks.value.map((t) => t.brand))].sort((a, b) => a.localeCompare(b, 'de'))
 )
 
 const weightBounds = computed(() => {
-  const w = trucks.map((t) => t.weight)
-  return { min: Math.min(...w), max: Math.max(...w) }
+  const w = trucks.value.map((t) => t.weight).filter((n) => n > 0)
+  return w.length ? { min: Math.min(...w), max: Math.max(...w) } : { min: 0, max: 0 }
 })
 
 function toggleBrand(brand: string) {
@@ -33,7 +110,7 @@ function resetFilters() {
 
 const filtered = computed<Truck[]>(() => {
   const q = search.value.trim().toLowerCase()
-  let list = trucks.filter((t) => {
+  let list = trucks.value.filter((t) => {
     if (selectedBrands.value.length && !selectedBrands.value.includes(t.brand)) return false
     if (minWeight.value != null && t.weight < minWeight.value) return false
     if (maxWeight.value != null && t.weight > maxWeight.value) return false
@@ -79,93 +156,107 @@ const hasActiveFilters = computed(
       </div>
     </header>
 
-    <div class="filters">
-      <div class="filter-row">
-        <label class="field grow">
-          <span class="field-label">Suche</span>
-          <input
-            v-model="search"
-            type="search"
-            placeholder="Modell, Aufbau, Bereifung … (z. B. „Doka“, „1113“, „ohne Pritsche“)"
-          />
-        </label>
+    <p v-if="status === 'loading'" class="notice">Lade Liste …</p>
 
-        <label class="field">
-          <span class="field-label">Sortierung</span>
-          <select v-model="sortBy">
-            <option value="brand">Marke / Modell</option>
-            <option value="weight-asc">Gewicht ↑ (leicht zuerst)</option>
-            <option value="weight-desc">Gewicht ↓ (schwer zuerst)</option>
-          </select>
-        </label>
+    <p v-else-if="status === 'unconfigured'" class="notice">
+      Noch keine Datenquelle hinterlegt. Trage die veröffentlichte Google-Sheet-CSV-URL
+      in <code>data/sheet.ts</code> ein.
+    </p>
 
-        <label class="field weight">
-          <span class="field-label">Gewicht von (kg)</span>
-          <input
-            v-model.number="minWeight"
-            type="number"
-            inputmode="numeric"
-            :placeholder="String(weightBounds.min)"
-          />
-        </label>
+    <p v-else-if="status === 'error'" class="notice error">
+      Liste konnte nicht geladen werden ({{ errorMsg }}). Prüfe, ob das Google Sheet
+      „im Web veröffentlicht" ist.
+    </p>
 
-        <label class="field weight">
-          <span class="field-label">bis (kg)</span>
-          <input
-            v-model.number="maxWeight"
-            type="number"
-            inputmode="numeric"
-            :placeholder="String(weightBounds.max)"
-          />
-        </label>
-      </div>
+    <template v-else>
+      <div class="filters">
+        <div class="filter-row">
+          <label class="field grow">
+            <span class="field-label">Suche</span>
+            <input
+              v-model="search"
+              type="search"
+              placeholder="Modell, Aufbau, Bereifung … (z. B. „Doka“, „1113“, „ohne Pritsche“)"
+            />
+          </label>
 
-      <div class="brands">
-        <button
-          v-for="b in brands"
-          :key="b"
-          class="chip"
-          :class="{ active: selectedBrands.includes(b) }"
-          type="button"
-          @click="toggleBrand(b)"
-        >
-          {{ b }}
-        </button>
-      </div>
+          <label class="field">
+            <span class="field-label">Sortierung</span>
+            <select v-model="sortBy">
+              <option value="brand">Marke / Modell</option>
+              <option value="weight-asc">Gewicht ↑ (leicht zuerst)</option>
+              <option value="weight-desc">Gewicht ↓ (schwer zuerst)</option>
+            </select>
+          </label>
 
-      <div class="meta">
-        <span class="count">
-          <strong>{{ filtered.length }}</strong> von {{ trucks.length }} Einträgen
-        </span>
-        <button v-if="hasActiveFilters" class="reset" type="button" @click="resetFilters">
-          Filter zurücksetzen
-        </button>
-      </div>
-    </div>
+          <label class="field weight">
+            <span class="field-label">Gewicht von (kg)</span>
+            <input
+              v-model.number="minWeight"
+              type="number"
+              inputmode="numeric"
+              :placeholder="String(weightBounds.min)"
+            />
+          </label>
 
-    <main class="results">
-      <p v-if="!filtered.length" class="empty">
-        Keine Treffer. Filter anpassen oder zurücksetzen.
-      </p>
-
-      <article v-for="t in filtered" :key="t.id" class="card">
-        <div class="card-head">
-          <div class="title">
-            <span class="brand">{{ t.brand }}</span>
-            <span class="model">{{ t.model }}</span>
-          </div>
-          <div class="weight">
-            {{ fmt(t.weight) }} <span class="unit">kg</span>
-          </div>
+          <label class="field weight">
+            <span class="field-label">bis (kg)</span>
+            <input
+              v-model.number="maxWeight"
+              type="number"
+              inputmode="numeric"
+              :placeholder="String(weightBounds.max)"
+            />
+          </label>
         </div>
-        <p v-if="t.desc" class="desc">{{ t.desc }}</p>
-      </article>
-    </main>
+
+        <div class="brands">
+          <button
+            v-for="b in brands"
+            :key="b"
+            class="chip"
+            :class="{ active: selectedBrands.includes(b) }"
+            type="button"
+            @click="toggleBrand(b)"
+          >
+            {{ b }}
+          </button>
+        </div>
+
+        <div class="meta">
+          <span class="count">
+            <strong>{{ filtered.length }}</strong> von {{ trucks.length }} Einträgen
+          </span>
+          <button v-if="hasActiveFilters" class="reset" type="button" @click="resetFilters">
+            Filter zurücksetzen
+          </button>
+        </div>
+      </div>
+
+      <main class="results">
+        <p v-if="!filtered.length" class="empty">
+          Keine Treffer. Filter anpassen oder zurücksetzen.
+        </p>
+
+        <article v-for="t in filtered" :key="t.id" class="card">
+          <div class="card-head">
+            <div class="title">
+              <span class="brand">{{ t.brand }}</span>
+              <span class="model">{{ t.model }}</span>
+            </div>
+            <div v-if="t.weight" class="weight">
+              {{ fmt(t.weight) }} <span class="unit">kg</span>
+            </div>
+          </div>
+          <p v-if="t.desc" class="desc">{{ t.desc }}</p>
+        </article>
+      </main>
+    </template>
 
     <footer class="foot">
       Angaben ohne Gewähr – Mischung aus gewogenen Werten, Papieren und Schätzungen.
-      Details siehe jeweilige Beschreibung. Die Liste wird über
-      <code>data/trucks.ts</code> auf GitHub gepflegt.
+      Details siehe jeweilige Beschreibung. Die Liste wird gemeinschaftlich über ein
+      Google Sheet gepflegt.
     </footer>
   </div>
 </template>
@@ -219,6 +310,23 @@ body {
   margin: 0.5rem 0 0;
   color: var(--muted);
   max-width: 60ch;
+}
+
+.notice {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  color: var(--muted);
+}
+
+.notice.error {
+  border-color: #5a2a2a;
+  color: #ff9b9b;
+}
+
+.notice code {
+  color: var(--text);
 }
 
 /* Filter bar */
@@ -417,10 +525,6 @@ select:focus {
   text-align: center;
   font-size: 0.82rem;
   color: var(--muted);
-}
-
-.foot code {
-  color: var(--text);
 }
 
 @media (max-width: 560px) {
