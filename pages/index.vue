@@ -116,14 +116,15 @@ function resetFilters() {
 }
 
 const filtered = computed<Truck[]>(() => {
-  const q = search.value.trim().toLowerCase()
+  // Tokenisierte Suche: jedes Wort muss vorkommen (beliebige Reihenfolge).
+  const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
   let list = trucks.value.filter((t) => {
     if (selectedBrands.value.length && !selectedBrands.value.includes(t.brand)) return false
     if (minWeight.value != null && t.weight < minWeight.value) return false
     if (maxWeight.value != null && t.weight > maxWeight.value) return false
-    if (q) {
+    if (terms.length) {
       const hay = `${t.brand} ${t.model} ${t.desc}`.toLowerCase()
-      if (!hay.includes(q)) return false
+      if (!terms.every((term) => hay.includes(term))) return false
     }
     return true
   })

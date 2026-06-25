@@ -38,6 +38,8 @@ onMounted(async () => {
 const search = ref('')
 const selectedTypes = ref<string[]>([])
 const selectedBrands = ref<string[]>([])
+const minPrice = ref<number | null>(null)
+const maxPrice = ref<number | null>(null)
 const sortBy = ref<'price-desc' | 'price-asc' | 'date-desc'>('price-desc')
 
 /** Eindeutige Werte eines Feldes, sortiert nach Häufigkeit (häufigste zuerst). */
@@ -54,6 +56,11 @@ function byFrequency(field: 'type' | 'brand') {
 const types = computed(() => byFrequency('type'))
 const brands = computed(() => byFrequency('brand'))
 
+const priceBounds = computed(() => {
+  const p = items.value.map((i) => i.price)
+  return p.length ? { min: Math.min(...p), max: Math.max(...p) } : { min: 0, max: 0 }
+})
+
 function toggle(list: typeof selectedTypes, value: string) {
   const i = list.value.indexOf(value)
   if (i === -1) list.value.push(value)
@@ -64,15 +71,24 @@ function resetFilters() {
   search.value = ''
   selectedTypes.value = []
   selectedBrands.value = []
+  minPrice.value = null
+  maxPrice.value = null
   sortBy.value = 'price-desc'
 }
 
 const filtered = computed<Item[]>(() => {
-  const q = search.value.trim().toLowerCase()
+  // Tokenisierte Suche: jedes Wort muss vorkommen (beliebige Reihenfolge),
+  // gesucht wird über Beschreibung + Typ + Marke.
+  const terms = search.value.trim().toLowerCase().split(/\s+/).filter(Boolean)
   let list = items.value.filter((it) => {
     if (selectedTypes.value.length && !selectedTypes.value.includes(it.type)) return false
     if (selectedBrands.value.length && !selectedBrands.value.includes(it.brand)) return false
-    if (q && !it.desc.toLowerCase().includes(q)) return false
+    if (minPrice.value != null && it.price < minPrice.value) return false
+    if (maxPrice.value != null && it.price > maxPrice.value) return false
+    if (terms.length) {
+      const hay = `${it.desc} ${it.type} ${it.brand}`.toLowerCase()
+      if (!terms.every((t) => hay.includes(t))) return false
+    }
     return true
   })
   list = [...list].sort((a, b) => {
@@ -95,7 +111,12 @@ const stats = computed(() => {
 })
 
 const hasActiveFilters = computed(
-  () => !!search.value || selectedTypes.value.length > 0 || selectedBrands.value.length > 0
+  () =>
+    !!search.value ||
+    selectedTypes.value.length > 0 ||
+    selectedBrands.value.length > 0 ||
+    minPrice.value != null ||
+    maxPrice.value != null
 )
 
 const fmtEur = (n: number) =>
@@ -141,7 +162,7 @@ const fmtUpdated = computed(() => (updated.value ? fmtDate(updated.value.slice(0
             <input
               v-model="search"
               type="search"
-              placeholder="Beschreibung … (z. B. „Sprinter“, „4x4“, „Unimog“)"
+              placeholder="Mehrere Wörter, beliebige Reihenfolge (z. B. „mercedes sprinter 4x4“)"
             />
           </label>
 
@@ -152,6 +173,26 @@ const fmtUpdated = computed(() => (updated.value ? fmtDate(updated.value.slice(0
               <option value="price-asc">Preis ↑ (günstig zuerst)</option>
               <option value="date-desc">Datum (neueste zuerst)</option>
             </select>
+          </label>
+
+          <label class="field weight">
+            <span class="field-label">Preis ab (€)</span>
+            <input
+              v-model.number="minPrice"
+              type="number"
+              inputmode="numeric"
+              :placeholder="String(priceBounds.min)"
+            />
+          </label>
+
+          <label class="field weight">
+            <span class="field-label">bis (€)</span>
+            <input
+              v-model.number="maxPrice"
+              type="number"
+              inputmode="numeric"
+              :placeholder="String(priceBounds.max)"
+            />
           </label>
         </div>
 
