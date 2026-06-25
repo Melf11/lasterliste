@@ -2,6 +2,8 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-01-01',
   devtools: { enabled: false },
+  // Beide Seiten statisch vorrendern (index wird ohnehin gecrawlt, /vebeg sicherheitshalber).
+  nitro: { prerender: { routes: ['/', '/vebeg'] } },
   app: {
     head: {
       title: 'Lasterliste – Leergewichte',

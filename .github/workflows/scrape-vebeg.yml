@@ -1,0 +1,42 @@
+name: Update Vebeg data
+
+# Sammelt täglich die VEBEG-Zuschlagspreise (Fahrzeuge) und committet neue Einträge
+# nach public/vebeg.json. Der anschließende Deploy läuft über pages.yml (workflow_run).
+
+on:
+  schedule:
+    - cron: '17 5 * * *' # täglich 05:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Nicht mehrere Sammelläufe gleichzeitig.
+concurrency:
+  group: scrape-vebeg
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Scrape VEBEG Zuschlagspreise
+        run: node scripts/scrape-vebeg.mjs
+
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet -- public/vebeg.json; then
+            echo "Keine Änderungen an public/vebeg.json."
+          else
+            git add public/vebeg.json
+            git commit -m "data: Vebeg-Zuschlagspreise aktualisiert"
+            git push
+          fi

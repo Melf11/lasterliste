@@ -7,9 +7,29 @@ Hier: Aufbau, lokale Entwicklung, Deployment und Sheet-Einrichtung.
 
 - **Nuxt 3**, als statische Seite generiert (`nuxt generate`) und auf **GitHub Pages** gehostet.
 - Kein Backend, keine Datenbank, kein Login.
+- Zwei Seiten über den Nuxt-Pages-Router:
+  - **`pages/index.vue`** – die Lasterliste (Leergewichte).
+  - **`pages/vebeg.vue`** – Statistik der VEBEG-Zuschlagspreise.
+  - **`app.vue`** ist das gemeinsame Layout (Navigation + globale Styles + `<NuxtPage>`).
 - Die Listendaten kommen **live aus einem Google Sheet**: Die Seite lädt im Browser die
   als CSV veröffentlichte Tabelle und rendert sie. Daten ändern sich also ohne Rebuild.
-- Die gesamte UI steckt in **`app.vue`** (Fetch + CSV-Parser + Filter + Styles).
+
+## VEBEG-Verkaufspreise (Statistik-Seite)
+
+Die VEBEG-Seite (`zuschlagspreise.htm`) ist server-gerendertes HTML, hat **keine
+CORS-Header** und zeigt nur die Zuschläge der *letzten Tage* – ein direkter Browser-Fetch
+ist also nicht möglich, und ein einmaliger Snapshot würde veralten. Deshalb:
+
+- **`scripts/scrape-vebeg.mjs`** (Node, ohne Abhängigkeiten) lädt die Seite, parst die
+  Fahrzeug-Zeilen (Klassifizierung nach Typ + Marke per Schlüsselwort-Tabellen) und merged
+  neue Zuschläge in **`public/vebeg.json`** – **dedupliziert nach Los-Nummer**, vorhandene
+  Einträge bleiben erhalten. So wächst über die Zeit eine Historie.
+- **`.github/workflows/scrape-vebeg.yml`** führt das Skript täglich (cron) aus und committet
+  geänderte `public/vebeg.json`. Lokal: `node scripts/scrape-vebeg.mjs`.
+- Da Bot-Commits mit dem `GITHUB_TOKEN` das `push`-Event **nicht** auslösen, deployt
+  `pages.yml` zusätzlich per `workflow_run` nach Abschluss des Sammellaufs.
+- `pages/vebeg.vue` lädt `public/vebeg.json` (unter `baseURL`) im Browser, filtert nach
+  Typ/Marke/Suche und berechnet die Kennzahlen (Anzahl, Ø, Median, Min, Max).
 
 ## Datenquelle (Google Sheet)
 

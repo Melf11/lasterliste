@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  # Nach dem Daten-Sammellauf neu deployen (Bot-Pushes lösen 'push' oben nicht aus).
+  workflow_run:
+    workflows: ['Update Vebeg data']
+    types: [completed]
 
 # Allow the workflow to publish to GitHub Pages.
 permissions:

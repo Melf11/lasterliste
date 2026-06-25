@@ -9,6 +9,15 @@ Feuerwehr- und Militärfahrzeuge).
 
 Oben kannst du suchen, nach Marke filtern, nach Gewicht eingrenzen und sortieren.
 
+### Vebeg-Verkaufspreise
+
+Unter **📊 Vebeg-Preise** (Reiter oben) gibt es eine zweite Seite mit den bei der
+[VEBEG](https://www.vebeg.de/de/verkauf/zuschlagspreise.htm) erzielten **Zuschlagspreisen
+für Fahrzeuge**. Nach Fahrzeugtyp (Pkw, Lkw, Anhänger …), Marke oder Stichwort filtern –
+darunter erscheinen Kennzahlen (Anzahl, Durchschnitt, Median, Min, Max) und die einzelnen
+Zuschläge. Die Daten werden täglich automatisch gesammelt, sodass über die Zeit eine
+Preis-Historie entsteht (die VEBEG selbst zeigt nur die letzten Tage).
+
 ## Liste bearbeiten
 
 Die Daten liegen in einem **Google Sheet** – dafür brauchst du nur einen
